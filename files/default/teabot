@@ -1,0 +1,40 @@
+upstream app_server {
+    server 127.0.0.1:8000 fail_timeout=0;
+}
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # SSL configuration
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+
+    location @proxy_to_app {
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Host $http_host;
+        proxy_redirect off;
+        proxy_pass http://app_server;
+    }
+
+
+    # Add index.php to the list if you are using PHP
+    index index.html index.htm index.nginx-debian.html;
+
+    server_name teabot.co.uk;
+    ssl_certificate /home/aaron/keys/www_teabot_co_uk.chained.crt;
+    ssl_certificate_key /home/aaron/keys/teabot.key;
+
+    location = / {
+        root /var/www/html;
+        try_files $uri $uri/index.html;
+    }
+
+    location / {
+        # First attempt to serve request as file, then
+        # as directory, then fall back to displaying a 404.
+        root /var/www/html;
+        try_files $uri @proxy_to_app;
+    }
+}
